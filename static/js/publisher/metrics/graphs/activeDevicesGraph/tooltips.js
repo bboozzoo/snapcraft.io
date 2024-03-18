@@ -13,6 +13,7 @@ export function tooltips() {
   const tooltipTemplate = (dateData, currentHoverKey) => {
     const tooltipRows = (dateData, currentHoverKey) => {
       let dataArr = [];
+      let total = 0;
       let other = {
         key: "other",
         value: 0,
@@ -30,6 +31,7 @@ export function tooltips() {
       }
 
       keys.forEach((key) => {
+        total += dateData[key];
         dataArr.push({
           key: key,
           value: dateData[key],
@@ -67,15 +69,17 @@ export function tooltips() {
               `<span class="snapcraft-graph-tooltip__series${
                 item.key === currentHoverKey ? " is-hovered" : ""
               }" title="${item.key}">`,
+              `<span class="snapcraft-graph-tooltip__series-start">`,
               `<span class="snapcraft-graph-tooltip__series-color"${
                 !item.count
                   ? `style="background:${this.colorScale(item.key)};"`
                   : ""
               }></span>`,
               `<span class="snapcraft-graph-tooltip__series-name">${item.key}</span>`,
+              `</span>`,
               `<span class="snapcraft-graph-tooltip__series-value">${commaValue(
-                item.value
-              )}</span>`,
+                item.value,
+              )} (${((item.value / total) * 100).toFixed(2)}%)</span>`,
               `</span>`,
             ].join("");
           }
@@ -87,7 +91,7 @@ export function tooltips() {
       `<div class="p-tooltip p-tooltip--top-center" style="display: block; pointer-events: none;">`,
       `<span class="p-tooltip__message" role="tooltip" style="display: block;">`,
       `<span class="snapcraft-graph-tooltip__title">${tooltipTimeFormat(
-        dateData.date
+        dateData.date,
       )}</span>`,
       tooltipRows(dateData, currentHoverKey),
       `</span>`,

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useLocation, Link } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useParams, Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { AsyncThunkAction } from "@reduxjs/toolkit";
+import { useAppDispatch } from "../../store";
 import {
   Spinner,
   Row,
@@ -21,7 +23,7 @@ import { fetchMembers } from "../../slices/membersSlice";
 import Publisher from "../Publisher";
 import Reviewer from "../Reviewer";
 import ReviewerAndPublisher from "../ReviewerAndPublisher";
-import SnapsTable from "./SnapsTable";
+import SnapsTables from "./SnapsTables";
 import SnapsFilter from "./SnapsFilter";
 import SnapsSearch from "./SnapsSearch";
 import SectionNav from "../SectionNav";
@@ -32,11 +34,12 @@ import { setPageTitle } from "../../utils";
 import type {
   StoresSlice,
   Snap,
+  Member,
   SnapsSlice,
   MembersSlice,
 } from "../../types/shared";
 
-function SnapsSlice() {
+function Snaps() {
   const brandStoresList = useSelector(brandStoresListSelector);
   const snaps = useSelector(snapsSelector);
   const members = useSelector(membersSelector);
@@ -53,7 +56,7 @@ function SnapsSlice() {
   const membersNotFound = useSelector(
     (state: MembersSlice) => state.members.notFound
   );
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { id } = useParams();
   const [snapsInStore, setSnapsInStore]: any = useState([]);
   const [otherStoreIds, setOtherStoreIds]: any = useState([]);
@@ -62,14 +65,11 @@ function SnapsSlice() {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [snapsToRemove, setSnapsToRemove]: any = useState([]);
-  const [showAddSuccessNotification, setShowAddSuccessNotification] = useState(
-    false
-  );
+  const [showAddSuccessNotification, setShowAddSuccessNotification] =
+    useState(false);
   const [showErrorNotification, setShowErrorNotification] = useState(false);
-  const [
-    showRemoveSuccessNotification,
-    setShowRemoveSuccessNotification,
-  ] = useState(false);
+  const [showRemoveSuccessNotification, setShowRemoveSuccessNotification] =
+    useState(false);
   const [removeSnapSaving, setRemoveSnapSaving] = useState(false);
   const [nonEssentialSnapIds, setNonEssentialSnapIds]: any = useState([]);
   const [isReloading, setIsReloading] = useState(false);
@@ -77,15 +77,16 @@ function SnapsSlice() {
   const [currentStore, setCurrentStore]: any = useState(null);
   const [isPublisherOnly, setIsPublisherOnly] = useState(false);
   const [isReviewerOnly, setIsReviewerOnly] = useState(false);
-  const [isReviewerAndPublisherOnly, setIsReviewerAndPublisherOnly] = useState(
-    false
-  );
-  const [
-    showRemoveSnapsConfirmation,
-    setShowRemoveSnapsConfirmation,
-  ] = useState(false);
+  const [isReviewerAndPublisherOnly, setIsReviewerAndPublisherOnly] =
+    useState(false);
+  const [showRemoveSnapsConfirmation, setShowRemoveSnapsConfirmation] =
+    useState(false);
   const [globalStore, setGlobalStore]: any = useState(null);
-  let location = useLocation();
+  const [fetchSnapsByStoreIdPromise, setFetchSnapsByStoreIdPromise] = useState<
+    ReturnType<AsyncThunkAction<Snap[], string, {}>> | undefined
+  >();
+  const [fetchMembersByStoreIdPromise, setFetchMembersByStoreIdPromise] =
+    useState<ReturnType<AsyncThunkAction<Member[], string, {}>> | undefined>();
 
   const getStoreName = (storeId: string) => {
     const store = brandStoresList.find((item) => item.id === storeId);
@@ -236,8 +237,27 @@ function SnapsSlice() {
     .map((snap) => snap["included-stores"][0]);
 
   useEffect(() => {
-    dispatch(fetchMembers(id as string) as any);
-    dispatch(fetchSnaps(id as string) as any);
+    setSnapsInStore([]);
+    setOtherStores([]);
+    setIsReloading(true);
+
+    if (fetchSnapsByStoreIdPromise) {
+      fetchSnapsByStoreIdPromise?.abort();
+    }
+
+    dispatch(fetchSnaps(id as string));
+
+    const fetchSnapsPromise = dispatch(fetchSnaps(id as string));
+    setFetchSnapsByStoreIdPromise(fetchSnapsPromise);
+
+    if (fetchMembersByStoreIdPromise) {
+      fetchMembersByStoreIdPromise?.abort();
+    }
+
+    dispatch(fetchMembers(id as string));
+
+    const fetchMembersPromise = dispatch(fetchMembers(id as string));
+    setFetchMembersByStoreIdPromise(fetchMembersPromise);
   }, [id]);
 
   useEffect(() => {
@@ -289,15 +309,6 @@ function SnapsSlice() {
       })
     );
   }, [otherStoreIds]);
-
-  useEffect(() => {
-    // protect against hash changes e.g. mobile navigation
-    if (location.pathname !== `/admin/${id}/snaps`) {
-      setSnapsInStore([]);
-      setOtherStores([]);
-      setIsReloading(true);
-    }
-  }, [location]);
 
   useEffect(() => {
     setCurrentMember(members.find((member) => member.current_user));
@@ -399,22 +410,25 @@ function SnapsSlice() {
                   </Row>
                 )}
                 <div className="u-fixed-width">
-                  {isReloading ? (
+                  {isReloading && (
                     <Spinner text="Loading&hellip;" />
-                  ) : (
-                    <SnapsTable
-                      snaps={snapsInStore}
-                      storeName={getStoreName(id || "")}
+                  )} 
+                  
+                  {!isReloading && currentStore && (
+                    <SnapsTables
+                      currentStoreName={currentStore.name}
+                      snapsInStore={snapsInStore}
                       otherStores={otherStores}
+                      globalStore={globalStore}
+                      getStoreName={getStoreName}
+                      isOnlyViewer={isOnlyViewer}
                       snapsToRemove={snapsToRemove}
                       setSnapsToRemove={setSnapsToRemove}
                       nonEssentialSnapIds={nonEssentialSnapIds}
-                      isOnlyViewer={isOnlyViewer}
-                      globalStore={globalStore}
                     />
                   )}
                 </div>
-                {!!includedStores.length && (
+                {!!includedStores.length && !isReloading && (
                   <div className="u-fixed-width">
                     <h4>Fully included stores</h4>
                     <p>
@@ -468,13 +482,6 @@ function SnapsSlice() {
                 storeId={id || ""}
                 nonEssentialSnapIds={nonEssentialSnapIds}
               />
-              {selectedSnaps.length ? (
-                <ul>
-                  {selectedSnaps.map((snap: Snap) => (
-                    <li key={snap.id}>{snap.name}</li>
-                  ))}
-                </ul>
-              ) : null}
             </div>
           </div>
           <div className="p-panel__footer u-align--right">
@@ -598,4 +605,4 @@ function SnapsSlice() {
   );
 }
 
-export default SnapsSlice;
+export default Snaps;

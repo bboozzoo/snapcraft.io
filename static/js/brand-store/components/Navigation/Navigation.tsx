@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { brandStoresListSelector } from "../../selectors";
 
@@ -15,6 +15,9 @@ function Navigation() {
       (document.activeElement as HTMLElement).blur();
     }
   };
+
+  // Feature flag for new snaps table layout
+  const [searchParams] = useSearchParams();
 
   return (
     <>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { useBrand } from "../../hooks";
 
@@ -8,6 +8,8 @@ import type { RouteParams } from "../../types/shared";
 function SectionNav({ sectionName }: { sectionName: string }) {
   const { id } = useParams<RouteParams>();
   const { isLoading, isSuccess, data } = useBrand(id);
+  const [searchParams] = useSearchParams();
+
 
   return (
     <nav className="p-tabs">
@@ -25,7 +27,7 @@ function SectionNav({ sectionName }: { sectionName: string }) {
               </Link>
             </li>
             {/* If success then models and signing keys are available */}
-            {data.success && (
+            {data.success && !data.data?.Code && (
               <>
                 <li className="p-tabs__item">
                   <Link

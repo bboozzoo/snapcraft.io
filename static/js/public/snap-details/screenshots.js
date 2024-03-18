@@ -1,5 +1,6 @@
 import lightbox from "./../../publisher/market/lightbox";
-import { Swiper, Navigation } from "swiper";
+import Swiper from "swiper";
+import { Navigation } from "swiper/modules";
 import { SCREENSHOTS_CONFIG } from "../../config/swiper.config";
 import iframeSize from "../../libs/iframeSize";
 
@@ -18,7 +19,7 @@ function clickCallback(event) {
 
 function filterImages() {
   return Array.from(
-    screenshotsEl.querySelectorAll("img, video, .js-video-slide")
+    screenshotsEl.querySelectorAll("img, video, .js-video-slide"),
   )
     .filter((image) => image.dataset.original)
     .map((image) => image.dataset.original);
