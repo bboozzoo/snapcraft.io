@@ -1,8 +1,10 @@
 # Packages
 import flask
+from webapp.extensions import csrf
 
 from canonicalwebteam.store_api.stores.snapstore import SnapPublisher
 from canonicalwebteam.store_api.exceptions import StoreApiResponseErrorList
+from flask.json import jsonify
 
 # Local
 import webapp.api.marketo as marketo_api
@@ -121,3 +123,26 @@ def post_account_name():
         return flask.redirect(flask.url_for(".get_account"))
     else:
         return flask.redirect(flask.url_for(".get_account_name"))
+    
+
+@account.route("/<snap_name>/create-track", methods=["POST"])
+# @login_required
+@csrf.exempt
+def post_create_track(snap_name):
+   track_name = flask.request.form["track-name"]
+   response = publisher_api.create_track(
+       flask.session["developer_token"], snap_name, track_name
+   )
+   if response.status_code == 201:
+       return response.json(), response.status_code
+   if response.status_code == 409:
+       return (
+           jsonify({"error": "Track already exists."}),
+           response.status_code,
+       )
+   if "error-list" in response.json():
+       return (
+           jsonify({"error": response.json()["error-list"][0]["message"]}),
+           response.status_code,
+       )
+   return response.json(), response.status_code
